@@ -132,8 +132,6 @@ display_stats()
 
 # Enhancements:
 #
-# 1. Add to git
-#
 # 2. need to clean up the summary table at the bottom, reflect inbound/outbound data separately
 #      - change to an output function, this will facilitate 4&5 below
 #
