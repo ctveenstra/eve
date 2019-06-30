@@ -1,0 +1,1 @@
+iconv -s -f UTF-16LE -t UTF-8 "Zulu's Escalation Bazaar_20190627_141042.txt"
