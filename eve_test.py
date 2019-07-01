@@ -186,12 +186,6 @@ display_stats()
 
 # Enhancements:
 #
-# 2. need to clean up the summary table at the bottom, reflect inbound/outbound data separately
-#      - change to an output function, this will facilitate 4&5 below
-#
-# 3. need to expand combat dictionary variable to track by weapon type
-#      - outbound damage only?
-#
 # 4. need to adjust the file read/seek logic to track the size/end of the file, and loop until cancelled
 #      - allows us to lighten the overhead by the script
 #
