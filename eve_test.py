@@ -1,7 +1,16 @@
 #!/usr/bin/env python3.7
 
-import glob, os, re
-from collections import defaultdict
+import glob, os, re, time
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 def updatestats(ship, weapon, damage, miss, in_out):
    # ship = enemy type
@@ -19,6 +28,7 @@ def updatestats(ship, weapon, damage, miss, in_out):
       combat[ship]['hits'] = 0
       combat[ship]['damage'] = 0
       combat[ship]['weapon'] = None
+      combat[ship]['kills'] = 0
 
  
    # Check if this weapon hash structure exists yet, define it if not
@@ -53,52 +63,63 @@ def updatestats(ship, weapon, damage, miss, in_out):
 
 
 def readfile (filename):
-   f = open(filename,"r")
-   lastship = ""
    global count
+   lastship = ""
+   lastweapon = ""
+   position = 0
 
-   for line in f:
-      # remove the colorizing in each line
-      line = re.sub('<.*?>', '', line)
+   while True:
+      f = open(filename,"r")
+      f.seek(position)
 
-      if re.search('bounty', line) is not None:
-         # lastship should be defined (bounty for something we haven't shot at yet??)
-         line = re.sub(',', '', line)  # de-comma-ize the money values
+      for line in f:
+         # remove the colorizing in each line
+         line = re.sub('<.*?>', '', line)
+   
+         if re.search('bounty', line) is not None:
+            # lastship should be defined (bounty for something we haven't shot at yet??)
+            line = re.sub(',', '', line)  # de-comma-ize the money values
+   
+            # [ 2019.04.04 18:08:33 ] (bounty) 18,168.75 ISK added to next bounty payout
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(bounty\) (.*) ISK added to next bounty payout', line)
+            combat[lastship]['bounty'] += int(float(match_object.group(3)))
+            combat[lastship]['kills'] += 1
+   
+   
+         if re.search('combat', line) is not None:
+   
+            # count the lines processed from this file
+            count += 1
+   
+            # we missed our shot
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) Your (.*) misses (.*) completely', line)
+            if match_object:
+               updatestats(match_object.group(4), match_object.group(3), 0, True, 'out') 
+   
+            # our target missed their shot
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (.*) misses you completely', line)
+            if match_object:
+               updatestats(match_object.group(3), None, 0, True, 'in') 
+   
+            # we hit our target
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) to (.*) - (.*) - (.*)$', line)
+            if match_object:
+               updatestats(match_object.group(4), match_object.group(5), match_object.group(3), False, 'out') 
+               lastship = match_object.group(4) 
+               lastweapon = match_object.group(5)
+    
+            # our target hit us
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) from (.*) - (.*) - (.*)$', line)
+            if match_object:
+               updatestats(match_object.group(4), match_object.group(5), match_object.group(3), False, 'in') 
+   
+      position = f.tell()
+      f.close
+      #print (str(count) + ' lines processed - file position ' + str(position))
 
-         # [ 2019.04.04 18:08:33 ] (bounty) 18,168.75 ISK added to next bounty payout
-         match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(bounty\) (.*) ISK added to next bounty payout', line)
-         combat[lastship]['bounty'] += int(float(match_object.group(3)))
+      display_stats()
 
-
-      if re.search('combat', line) is not None:
-
-         # count the lines processed from this file
-         count += 1
-
-         # we missed our shot
-         match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) Your (.*) misses (.*) completely', line)
-         if match_object:
-            updatestats(match_object.group(4), match_object.group(3), 0, True, 'out') 
-
-         # our target missed their shot
-         match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (.*) misses you completely', line)
-         if match_object:
-            updatestats(match_object.group(3), None, 0, True, 'in') 
-
-         # we hit our target
-         match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) to (.*) - (.*) - (.*)$', line)
-         if match_object:
-            updatestats(match_object.group(4), match_object.group(5), match_object.group(3), False, 'out') 
-            lastship = match_object.group(4) 
- 
-         # our target hit us
-         match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) from (.*) - (.*) - (.*)$', line)
-         if match_object:
-            updatestats(match_object.group(4), match_object.group(5), match_object.group(3), False, 'in') 
-
-   f.close
-   print (str(count) + ' lines processed')
-
+      time.sleep(1)
 
 
 def newestfile (path):
@@ -121,6 +142,7 @@ def damage_string(form, m, h, d):
 
 
 def display_stats():
+   os.system('clear')
    bounty_sum = 0
    displayformat = " | {:>8,}  {:>6,}  {:>8,}  {:>8,}"
    headerformat  = displayformat.replace(",","")
@@ -131,10 +153,11 @@ def display_stats():
 
    for weapon in sorted(weapons):
       # do something
-      print(weapon)
+      #print(weapon)
       line1 = line1 + str(weapon).center(37)
       line2 = line2 + str(headerformat).format('Misses', 'Hits', 'Damage', 'Average').center(24)
 
+   line2 = line2 + str(" | {:>6} {:>12}").format("Kiils", "Bounty")
    print (line1)
    print (line2)
 
@@ -150,18 +173,30 @@ def display_stats():
 
       for weapon in sorted(weapons):
          # do something
-         if combat[ship][weapon]['hits'] == 0:
-            avgdmg = 0
+         if (combat[ship].get(weapon, {}).get('hits', None) is None):		# check if new weapon used
+            line = line + " |" + str("").center(37)
          else:
-            avgdmg = int(combat[ship][weapon]['damage'] / combat[ship][weapon]['hits'])
+           if combat[ship][weapon]['hits'] == 0:
+              avgdmg = 0
+           else:
+              avgdmg = int(combat[ship][weapon]['damage'] / combat[ship][weapon]['hits'])
+           
+           if (ship == lastship and weapon == lastweapon):
+              line = line + bcolors.OKGREEN + damage_string(displayformat, combat[ship][weapon]['misses'], combat[ship][weapon]['hits'], combat[ship][weapon]['damage']).center(24) + bcolors.ENDC
+           else:
+              line = line + damage_string(displayformat, combat[ship][weapon]['misses'], combat[ship][weapon]['hits'], combat[ship][weapon]['damage']).center(24)
 
-         line = line + damage_string(displayformat, combat[ship][weapon]['misses'], combat[ship][weapon]['hits'], combat[ship][weapon]['damage']).center(24)
-
-
+      line = line + (" | {:>6,} {:>12,}").format(combat[ship]['kills'], combat[ship]['bounty'])
       print (line)
       bounty_sum += combat[ship]['bounty']
 
+   line = "   " + str("").center(30) + str("").center(38)
+   for weapon in sorted(weapons):
+      line = line + str("").center(38)
+   line = line + ("  {:>6} {:>12,}").format("", bounty_sum)
 
+
+   print(bcolors.OKGREEN + line + bcolors.ENDC) 
 
 
 
@@ -178,19 +213,23 @@ weapons = {}   # define the hash to hold the types of weapons used
 combat = {}    # define the hash to hold the combat stats
 count = 0
 lastship = ""
+lastweapon = ""
 
 file = newestfile (path)
 readfile (file)
-display_stats()
 
 
 # Enhancements:
 #
-# 4. need to adjust the file read/seek logic to track the size/end of the file, and loop until cancelled
-#      - allows us to lighten the overhead by the script
+# 2. allow a command line argument to a specific file for test processing
 #
+# 3. allow a -now command line argument to move file pointer to end of file before the first scan (essentially a reset without non-blocking key reads)
+#
+# 4. add kill count beside bounty column
+# 
 # 5. use ansi commands to reflect color on the output lines
 #      - combine this with change #3 above, use lastship variable to highlight which target was last shot at
+#      - add a function to scan the dictionary to determine the ship with the highest average damage, use this for the colorizing
 #
 # 6. allow a "from now" flag to be entered on the keyboard
 #      - this would allow you to flag the start of a new site
@@ -205,5 +244,8 @@ display_stats()
 # 9. detect start/end times for the sites, automatically show the start time, end time, and elapsed duration
 #      - reset the start time after some period of no hit detection (default window of like 1 minute or something)
 #
-# 10. allow a command line argument to a specific file for test processing
 #
+# Bugs:
+# 
+#  - there appears to be an issue during fresh runs, inbound enemy activity is not being recorded, all 0's despite us shooting back
+#    - only populating on hits, not on misses?
