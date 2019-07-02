@@ -10,8 +10,8 @@ class bcolors:
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
@@ -87,7 +87,7 @@ def timestamp (strdate, strtime):
    if (delta > timeout):
       print ("Delta (" + str(delta) + " > " + str(timeout) + ", clearing dictionaries")
       weapons.clear()   # reset the hash to hold the types of weapons used
-      combat.clear      # reset the hash to hold the combat stats
+      combat.clear()      # reset the hash to hold the combat stats
       count = 0
       lastship = ""
       lastweapon = ""
@@ -102,8 +102,8 @@ def timestamp (strdate, strtime):
 
 def readfile (filename):
    global count
-   lastship = ""
-   lastweapon = ""
+   global lastship
+   global lastweapon
    position = 0
 
    while True:
@@ -254,6 +254,7 @@ def display_stats():
    a = timedelta(seconds=delta)
    print('Elapsed Time ' + str(a))
 
+
 #################################################################
 #####                         MAIN                          #####
 #################################################################
@@ -261,7 +262,8 @@ def display_stats():
 # path to the source directory
 path="/cygdrive/C/Users/Chris/Documents/EVE/logs/Gamelogs"
 tzoffset=3600
-timeout=60
+#timeout=60		# controls how long of a pause between log blocks to maintain a single scenario
+timeout=60000		# controls how long of a pause between log blocks to maintain a single scenario
 
 weapons = {}   # define the hash to hold the types of weapons used
 combat = {}    # define the hash to hold the combat stats
@@ -282,27 +284,10 @@ readfile (file)
 #
 # 2. allow a command line argument to a specific file for test processing
 #
-# 3. allow a -now command line argument to move file pointer to end of file before the first scan (essentially a reset without non-blocking key reads)
-#
 # 5. use ansi commands to reflect color on the output lines
-#      - combine this with change #3 above, use lastship variable to highlight which target was last shot at
 #      - add a function to scan the dictionary to determine the ship with the highest average damage, use this for the colorizing
-#
-# 6. allow a "from now" flag to be entered on the keyboard
-#      - this would allow you to flag the start of a new site
-#      - maybe track bounties over flags
-#      - include a reset back to full output flag as well
 #
 # 7. colorizing - with multiple outbound damage types, highlight which avgdmg is highest between the types
 #      - this indicates the preferred weapon for each target type
 #
-# 8. optionally offer a sort by feature - highest average incoming damage, alphabetical, etc.
-#
-# 9. detect start/end times for the sites, automatically show the start time, end time, and elapsed duration
-#      - reset the start time after some period of no hit detection (default window of like 1 minute or something)
-#
-#
-# Bugs:
-# 
-#  - there appears to be an issue during fresh runs, inbound enemy activity is not being recorded, all 0's despite us shooting back
-#    - only populating on hits, not on misses?
+
