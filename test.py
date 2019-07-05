@@ -70,6 +70,8 @@ def timestamp (strdate, strtime):
    global lasttime
    global combat
    global weapons
+   global bounties
+   global elapsed
 
    # build a time_struct representing the current log entry timestamp
    current = strptime(strdate + " " + strtime, '%Y.%m.%d %H:%M:%S')
@@ -85,7 +87,7 @@ def timestamp (strdate, strtime):
    #   we had a lull in the fight, but the fight has since resumed (say moved to a new haven site)
    #   this would be a good time to reset the counters (based on timeout setting)
    if (delta > timeout):
-      print ("Delta (" + str(delta) + " > " + str(timeout) + ", clearing dictionaries")
+      #print ("Delta (" + str(delta) + " > " + str(timeout) + ", clearing dictionaries")
       weapons.clear()   # reset the hash to hold the types of weapons used
       combat.clear()      # reset the hash to hold the combat stats
       count = 0
@@ -93,17 +95,23 @@ def timestamp (strdate, strtime):
       lastweapon = ""
       starttime = current
       lasttime = current 
+      if (bounties[len(bounties) -1] > 0):
+         bounties += [0]
+         elapsed += [0]
 
    # check if the log time is more recent than the last time we saw (compensating for GMT)
    if (mktime(current) > (mktime(lasttime) - tzoffset)):
       lasttime = current
 
+   # save the current elapsed time
+   elapsed[len(elapsed)-1] = mktime(lasttime) - mktime(starttime)
 
 
 def readfile (filename):
    global count
    global lastship
    global lastweapon
+   global bounties
    position = 0
 
    while True:
@@ -123,6 +131,7 @@ def readfile (filename):
             combat[lastship]['bounty'] += int(float(match_object.group(3)))
             combat[lastship]['kills'] += 1
             timestamp (match_object.group(1), match_object.group(2))
+            bounties[len(bounties) -1] += float(match_object.group(3))    # keep the last entry updated to the current total
    
    
          if re.search('combat', line) is not None:
@@ -160,7 +169,6 @@ def readfile (filename):
 
       display_stats()
 
-      #systime.sleep(1)
       time.sleep(1)
 
 
@@ -199,7 +207,6 @@ def display_stats():
 
    for weapon in sorted(weapons):
       # do something
-      #print(weapon)
       line1 = line1 + str(weapon).center(37)
       line2 = line2 + str(headerformat).format('Misses', 'Hits', 'Damage', 'Average').center(24)
 
@@ -240,7 +247,7 @@ def display_stats():
    line = "   " + str("").center(30) + str("").center(38)
    for weapon in sorted(weapons):
       line = line + str("").center(38)
-   line = line + ("  {:>6} {:>12,}").format("", bounty_sum)
+   line = line + ("   {:>6} {:>12,}").format("", bounty_sum)
 
    print(bcolors.GREEN + line + bcolors.ENDC) 
 
@@ -254,6 +261,14 @@ def display_stats():
    a = timedelta(seconds=delta)
    print('Elapsed Time ' + str(a))
 
+   print("")
+   print("")
+   print("")
+
+   print ("Site Count:  " + str(len(bounties)))
+   for i in range(len(bounties)):
+      print ("Site {:>2}    {:>12,}   {:}".format( (i+1), int(bounties[i]), timedelta(seconds=elapsed[i])))
+
 
 #################################################################
 #####                         MAIN                          #####
@@ -262,11 +277,12 @@ def display_stats():
 # path to the source directory
 path="/cygdrive/C/Users/Chris/Documents/EVE/logs/Gamelogs"
 tzoffset=3600
-#timeout=60		# controls how long of a pause between log blocks to maintain a single scenario
-timeout=60000		# controls how long of a pause between log blocks to maintain a single scenario
+timeout=60		# controls how long of a pause between log blocks to maintain a single scenario
 
 weapons = {}   # define the hash to hold the types of weapons used
 combat = {}    # define the hash to hold the combat stats
+bounties = [0]
+elapsed = [0]
 count = 0
 lastship = ""
 lastweapon = ""
@@ -280,9 +296,13 @@ file = newestfile (path)
 readfile (file)
 
 
-# Enhancements:
+# Future Enhancements:
 #
-# 2. allow a command line argument to a specific file for test processing
+# 2. allow command line arguments
+#     - to a specific file for test processing
+#     - to set the timeout value for resetting between sites
+#     - to set the tzoffset (-5/-6 for EST/EDT), until we can figure out how to calculate it automatically
+#     - to set a warning threshold for avgdmg to display red, i.e. over 60 points, show it in red
 #
 # 5. use ansi commands to reflect color on the output lines
 #      - add a function to scan the dictionary to determine the ship with the highest average damage, use this for the colorizing
@@ -290,4 +310,7 @@ readfile (file)
 # 7. colorizing - with multiple outbound damage types, highlight which avgdmg is highest between the types
 #      - this indicates the preferred weapon for each target type
 #
+# 9. add last ship/weapon tracking so we can highlight the last shot by weapon type
+#
+# 10. track the damage taken over last 5 seconds, highlight those enemy lines.  Use list with push/pop to keep the time range static
 
