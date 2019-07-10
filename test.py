@@ -159,7 +159,7 @@ def readfile (filename):
                lastweapon = match_object.group(5)
     
             # our target hit us
-            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) from (.*) - (.*) - (.*)$', line)
+            match_object = re.search('\[ ([\d.]*) ([\d:]*) \] \(combat\) (\d*) from ([^-]*)-? ?(.*)? - ([^-]*)$', line)
             if match_object:
                updatestats(match_object.group(4), match_object.group(5), match_object.group(3), False, 'in') 
                timestamp (match_object.group(1), match_object.group(2))
@@ -202,8 +202,8 @@ def display_stats():
    headerformat  = displayformat.replace(",","")
 
    # Display the Output Title:
-   line1 = str("").center(30) + str("Enemy Ship").center(38)
-   line2 = str("{:30}" + headerformat).format("Ship", 'Misses', 'Hits', 'Damage', 'Average')
+   line1 = str("").center(35) + str("Enemy Ship").center(38)
+   line2 = str("{:35}" + headerformat).format("Ship", 'Misses', 'Hits', 'Damage', 'Average')
 
    for weapon in sorted(weapons):
       # do something
@@ -222,7 +222,7 @@ def display_stats():
       else:
          avgdmg = int(combat[ship]['damage'] / combat[ship]['hits'])
  
-      line = ("{:30}".format(ship) + damage_string(displayformat, combat[ship]['misses'], combat[ship]['hits'], combat[ship]['damage']))
+      line = ("{:35}".format(ship) + damage_string(displayformat, combat[ship]['misses'], combat[ship]['hits'], combat[ship]['damage']))
 
       for weapon in sorted(weapons):
          # do something
@@ -244,7 +244,7 @@ def display_stats():
       print (line)
       bounty_sum += combat[ship]['bounty']
 
-   line = "   " + str("").center(30) + str("").center(38)
+   line = "   " + str("").center(35) + str("").center(38)
    for weapon in sorted(weapons):
       line = line + str("").center(38)
    line = line + ("   {:>6} {:>12,}").format("", bounty_sum)
@@ -313,4 +313,5 @@ readfile (file)
 # 9. add last ship/weapon tracking so we can highlight the last shot by weapon type
 #
 # 10. track the damage taken over last 5 seconds, highlight those enemy lines.  Use list with push/pop to keep the time range static
-
+#
+# 11. keep track of longest ship string, variablize the first display column size
